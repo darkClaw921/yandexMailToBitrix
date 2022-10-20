@@ -89,7 +89,14 @@ def prepare_product(string:str):
     s = re.split('[0-9]\).\(', string)
     s.pop(0)
     for prod in s:
-        temp.append(prod.split('\xa0')[0])  
+        b=[]
+        a = prod.split('\xa0')[0]  
+        a = a.split(')',maxsplit=1)[1]
+        b.append(a.split('--')[0].strip())# название товара
+        b.append(a.split('--')[1].split('x')[0].replace('р.', '') \
+                .replace(' ','').strip()) # цена одной штуки 
+        b.append(a.split('--')[1].split('x')[1].split('=')[0].strip()) # количество товара
+        temp.append(b)
     return temp
     #logger.debug(s)
 
@@ -99,7 +106,13 @@ def prepare_text_email(string:str)->dict:
     temp = {}
     fio = slice_str(string, 'ФИО:','Телефон:')
     temp.setdefault( 'фио', slice_str(str(string),'ФИО: ','Телефон:')) 
-    temp.setdefault( 'телефон', slice_str(string,'Телефон: ','Email:')) 
+    # TODO: можно записать лучше но я не помню как
+    temp.setdefault( 'телефон', slice_str(string,'Телефон: ','Email:') \
+            .replace(' ','') \
+            .replace('(','') \
+            .replace(')','') \
+            .replace('-','') \
+            .replace('+','')) 
     temp.setdefault( 'почта', slice_str(string,'Email: ','Дополнительная информация:')) 
     temp.setdefault( 'инфо', slice_str(string,'Дополнительная информация: ','Номер заказа:')) 
     temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа:')) 
