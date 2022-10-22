@@ -6,34 +6,25 @@ import email.message
 from loguru import logger
 from art import text2art
 from pprint import pprint
+from bitrix24 import Bitrix24
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+LOGIN = os.environ.get('login')
+PASSWORD = os.environ.get('password')
+webHook = os.environ.get('webhook')
+bit = Bitrix24(webHook)
+imap = imaplib.IMAP4_SSL('imap.yandex.ru')
+imap.login(str(LOGIN),str(PASSWORD))
+
 
 logger.add('log.log', rotation='5 MB', level='DEBUG')
 
 
 @logger.catch 
 def slice_str(s:str,start:str, end:str)->str:
-    
-    #s[:s.find(start)]+s[s.rfind(end)+1:-1]
     return s[s.find(start)+len(start):s.find(end)]
-
-
-
-@logger.catch
-def test():
-    c = imaplib.IMAP4_SSL('imap.yandex.ru')
-    login ='igor.gerasimov@in-u.ru'
-    password = 'qeukagqoeslzkekb'
-
-    c.login(login,password)
- 
-    c.select('INBOX', readonly=True)
-    
-    typ, msg_data = c.fetch('49', '(RFC822)')
-    for response_part in msg_data:
-        if isinstance(response_part, tuple):
-            msg = email.message_from_string(str(response_part[1]))
-            for header in [ 'subject', 'to', 'from' ]:
-                print ('%-8s: %s' % (header.upper(), msg[header]))
 
 @logger.catch
 def test2(mail):
@@ -43,11 +34,9 @@ def test2(mail):
     if email_message.is_multipart():
         for payload in email_message.get_payload():
             body = payload.get_payload(decode=True).decode('utf-8')
-            logger.debug(body)
             return body
     else:    
         body = email_message.get_payload(decode=True).decode('utf-8')
-        logger.debug(body)
         return body
 
 
@@ -57,19 +46,16 @@ def remove_html_tags(text):
     return re.sub(clean, '', text)
 
 @logger.catch
-def get_mail():
-    imap = imaplib.IMAP4_SSL('imap.yandex.ru')
-    login ='igor.gerasimov@in-u.ru'
-    password = 'qeukagqoeslzkekb'
+def get_mail(ID):
+    #login ='igor.gerasimov@in-u.ru'
+    #password = 'qeukagqoeslzkekb'
 
-    imap.login(login,password)
  
-    imap.list()
-    imap.select("inbox")
-    sender = 'info@lefortovo-mebel.ru'
-    types, data =imap.search(None, 'FROM', f'{sender}')
+    #sender = 'info@lefortovo-mebel.ru'
     #types, data=  imap.search(None, '(FROM "info@lefortovo-mebel.ru")')
-    status, data = imap.fetch('49', '(RFC822)')
+    #logger.info(data)
+    #for ID in data:
+    status, data = imap.fetch(ID, '(RFC822)')
     #logger.debug(data)
     a = test2(data[0][1].decode())
     a = remove_html_tags(a)
@@ -80,6 +66,7 @@ def get_mail():
     #pprint(a)
     #a = slice_str(str(a),'ФИО:','Телефон:')
     logger.debug(a)
+    return a
 
 @logger.catch
 def prepare_product(string:str):
@@ -123,11 +110,63 @@ def prepare_text_email(string:str)->dict:
     return temp
 
 @logger.catch
+def create_lid(mail:dict):
+    #a = bit.callMethod('crm.lead.fields')
+    title = f"""Заказ в интернет-магазине {mail['номер заказа']}"""
+    print(title)
+    a = bit.callMethod('crm.lead.add',fields={'TITLE':title,
+        'NAME':mail['фио'],
+        'EMAIL':[mail['почта']],
+        'COMMENTS':mail['инфо']})
+    #a = bit.callMethod('crm.lead.add', TITLE=title,
+    #        NAME=mail['фио'],
+    #        EMAIL=mail['почта'],
+    #        COMMENTS=mail['инфо'])
+    logger.info(a)
+
+@logger.catch
+def test():
+    #a= bit.callMethod('crm.productrow.fields')
+    s = bit.callMethod('crm.lead.productrows.get', id=648) 
+    a = bit.callMethod('crm.lead.productrows.set',
+            id=648,
+            rows=[{
+                "PRODUCT_ID": 76,
+                "QUANTITY":2,
+                }] )
+               # [{"ORIGINAL_PRODUCT_NAME": 'test1',
+                #"PRICE": 40,"QUANTITY": 2 }]])
+            #{ "PRODUCT_ID": 666, "PRICE": '100.00', "QUANTITY": '2' }]])
+    a = bit.callMethod('crm.product.add',
+            fields={ 
+                    "NAME": "1С-Битрикс: Управление сайтом - Старт", 
+                    "CURRENCY_ID": "RUB", 
+                    "PRICE": 4900, 
+                    "SORT": 500
+                })
+    a = bit.callMethod('crm.lead.productrows.set',
+            id=648,
+            rows=[{
+                "PRODUCT_ID": a,
+                "QUANTITY":2,
+                }] )
+    pprint(s)
+    pprint(a)
+
+@logger.catch
 def main():
+    sender = 'korzinymebeli@yandex.ru'
     #test()
-    get_mail()
+    imap.list()
+    imap.select("inbox")
+    types, data =imap.search(None, 'FROM', f'{sender}')
+    
+    for ID in data:
+        mail = get_mail(ID)
+        create_lid(mail)
 
 if __name__ == '__main__':
     art = text2art('mail', 'rand')
     print(art)
-    main()
+    test()
+    #main()
