@@ -48,6 +48,10 @@ def slice_str(s:str,start:str, end:str):
 def slice_str_phone(s:str,start:str):
     return s[s.find(start)+len(start):s.find(start)+len(start)+18]
 
+@logger.catch 
+def slice_str_site(s:str,start:str):
+    return s[s.find(start)+len(start):len(s)].split('/')[2]
+
 @logger.catch
 def test2(mail):
     raw_email_string=mail
@@ -133,6 +137,7 @@ def prepare_text_email(string:str)->dict:
     a = prepare_product( slice_str(string,'Список товаров:','Итого:'))
     temp.setdefault('товары',a)
     temp.setdefault('Итог', slice_str(string,'Оплаченная сумма:','Список товаров:').split('из')[1])#.replace('р.','')) 
+    temp.setdefault('Сайт', slice_str_site(string,'Получить ссылку на купленный товар Вы можете на странице заказа:'))
     #logger.debug(a)
     return temp
 
@@ -144,6 +149,10 @@ def create_lid(mail:dict):
     contact_id = None
     title = f"""Заказ в интернет-магазине {mail['номер заказа']}"""
     isGetContact = isGet_contact(mail['телефон'])
+    site = None
+    
+    if mail['Сайт'] == 'lefortovo-mebel.ru':
+        site = 1036
     
     if isGetContact[0]:
         contact_id = isGetContact[1]
@@ -156,7 +165,7 @@ def create_lid(mail:dict):
         'EMAIL':email,
         'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
         'PHONE':phone ,
-        'UF_CRM_1664182558362': 1036,
+        'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
 
     #a = bit.callMethod('crm.lead.add', TITLE=title,
@@ -230,7 +239,7 @@ def main():
         logger.info('создали лида')
 
         f = open(fileName, 'w')
-        #f.write(data[-1])
+        #f.write(data)
         f.write(ID)
         f.close()
         LAST_ID = int(ID)
@@ -241,7 +250,7 @@ if __name__ == '__main__':
     #test()
     while True:
         main()
-        time.sleep(5)
+        time.sleep(60)
 
     #a = isGet_contact('74441111111')
     #logger.debug(a)
