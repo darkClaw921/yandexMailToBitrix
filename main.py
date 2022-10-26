@@ -1,4 +1,4 @@
-import shlex
+import time 
 import re
 import base64
 import imaplib
@@ -22,6 +22,11 @@ imap.login(str(LOGIN),str(PASSWORD))
 
 logger.add('log.log', rotation='5 MB', level='DEBUG')
 
+fileName='id.txt'
+f = open(fileName, 'r')
+LAST_ID = int(f.read())
+f.close()
+
 @logger.catch
 def isGet_contact(phone:str):
     a= bit.callMethod("crm.contact.list", FILTER={'PHONE':phone}, select=['ID'])
@@ -33,8 +38,15 @@ def isGet_contact(phone:str):
 
 
 @logger.catch 
-def slice_str(s:str,start:str, end:str)->str:
+def slice_str(s:str,start:str, end:str):
+    a = s.find(start)
+    if a == -1:
+        return ' '
     return s[s.find(start)+len(start):s.find(end)]
+
+@logger.catch 
+def slice_str_phone(s:str,start:str):
+    return s[s.find(start)+len(start):s.find(start)+len(start)+18]
 
 @logger.catch
 def test2(mail):
@@ -81,16 +93,17 @@ def get_mail(ID):
 @logger.catch
 def prepare_product(string:str):
     temp = []
+    #logger.info(string)
     logger.info('подготовка товаров')
     #regex='[0-9]\).\(' #1) (
     s = re.split('[0-9]\).\(', string)
     s.pop(0)
     temps = ''
-    for prod in s:
+    for count, prod in enumerate(s):
         b=[]
         a = prod.split('\xa0')[0]  
         a = a.split(')',maxsplit=1)[1]
-        b.append('<br> Товар: '+a.split('--')[0].strip())# название товара
+        b.append(f'<br> {count+1} Товар: '+a.split('--')[0].strip())# название товара
         b.append('<br> Цена: '+a.split('--')[1].split('x')[0].replace('р.', '') \
                 .replace(' ','').strip()) # цена одной штуки 
         b.append('<br> Количество: '+a.split('--')[1].split('x')[1].split('=')[0].strip()) # количество товара
@@ -107,7 +120,7 @@ def prepare_text_email(string:str)->dict:
     fio = slice_str(string, 'ФИО:','Телефон:')
     temp.setdefault( 'фио', slice_str(str(string),'ФИО: ','Телефон:')) 
     # TODO: можно записать лучше но я не помню как
-    temp.setdefault( 'телефон', slice_str(string,'Телефон: ','Email:') \
+    temp.setdefault( 'телефон', slice_str_phone(string,'Телефон: ') \
             .replace(' ','') \
             .replace('(','') \
             .replace(')','') \
@@ -115,9 +128,9 @@ def prepare_text_email(string:str)->dict:
             .replace('+','')) 
     temp.setdefault( 'почта', slice_str(string,'Email: ','Дополнительная информация:')) 
     temp.setdefault( 'инфо', slice_str(string,'Дополнительная информация: ','Номер заказа:')) 
-    temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа:')) 
+    temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа')) 
     #temp.setdefault( 'товары', slice_str(string,'Список товаров: ','Итог:')) 
-    a = prepare_product( slice_str(string,'Список товаров: ','Итог:'))
+    a = prepare_product( slice_str(string,'Список товаров:','Итого:'))
     temp.setdefault('товары',a)
     temp.setdefault('Итог', slice_str(string,'Оплаченная сумма:','Список товаров:').split('из')[1])#.replace('р.','')) 
     #logger.debug(a)
@@ -182,7 +195,18 @@ def test():
     pprint(a)
 
 @logger.catch
+def del_list(lst):
+    a = lst.copy()
+    for i in lst:
+        if int(i) > LAST_ID:
+            continue
+        else:
+            a.remove(i)
+    return a
+
+@logger.catch
 def main():
+    global LAST_ID
     #sender = 'korzinymebeli@yandex.ru'
     #sender = 'info@lefortovo-mebel.ru'
     sender = 'noreply@megagroup.ru'
@@ -194,15 +218,30 @@ def main():
    #     print(shlex.split(folder.decode())[-1])
     types, data =imap.search(None, 'FROM', f'{sender}')
     data = str(data[0]).replace("'",'').replace('b','').split(' ')
+    
+    data = del_list(data)
     logger.debug(data)
-    for ID in data[-1]:
+    if data == []:
+        return 0
+
+    for ID in data:
         mail = get_mail(ID)
         create_lid(mail)
+        logger.info('создали лида')
+
+        f = open(fileName, 'w')
+        #f.write(data[-1])
+        f.write(ID)
+        f.close()
+        LAST_ID = int(ID)
 
 if __name__ == '__main__':
     art = text2art('mail', 'rand')
     print(art)
     #test()
-    main()
+    while True:
+        main()
+        time.sleep(5)
+
     #a = isGet_contact('74441111111')
     #logger.debug(a)
