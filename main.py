@@ -1,3 +1,4 @@
+import shlex
 import re
 import base64
 import imaplib
@@ -20,6 +21,15 @@ imap.login(str(LOGIN),str(PASSWORD))
 
 
 logger.add('log.log', rotation='5 MB', level='DEBUG')
+
+@logger.catch
+def isGet_contact(phone:str):
+    a= bit.callMethod("crm.contact.list", FILTER={'PHONE':phone}, select=['ID'])
+    logger.debug(a)
+    if len(a) > 0:
+        return True, a[0]['ID'] 
+    else:
+        return False, []
 
 
 @logger.catch 
@@ -75,16 +85,19 @@ def prepare_product(string:str):
     #regex='[0-9]\).\(' #1) (
     s = re.split('[0-9]\).\(', string)
     s.pop(0)
+    temps = ''
     for prod in s:
         b=[]
         a = prod.split('\xa0')[0]  
         a = a.split(')',maxsplit=1)[1]
-        b.append(a.split('--')[0].strip())# название товара
-        b.append(a.split('--')[1].split('x')[0].replace('р.', '') \
+        b.append('<br> Товар: '+a.split('--')[0].strip())# название товара
+        b.append('<br> Цена: '+a.split('--')[1].split('x')[0].replace('р.', '') \
                 .replace(' ','').strip()) # цена одной штуки 
-        b.append(a.split('--')[1].split('x')[1].split('=')[0].strip()) # количество товара
+        b.append('<br> Количество: '+a.split('--')[1].split('x')[1].split('=')[0].strip()) # количество товара
         temp.append(b)
-    return temp
+        a1 = ' '.join(b)
+        temps += f'<br>\n{a1}\n'
+    return temps
     #logger.debug(s)
 
 
@@ -106,18 +119,33 @@ def prepare_text_email(string:str)->dict:
     #temp.setdefault( 'товары', slice_str(string,'Список товаров: ','Итог:')) 
     a = prepare_product( slice_str(string,'Список товаров: ','Итог:'))
     temp.setdefault('товары',a)
+    temp.setdefault('Итог', slice_str(string,'Оплаченная сумма:','Список товаров:').split('из')[1])#.replace('р.','')) 
     #logger.debug(a)
     return temp
 
 @logger.catch
 def create_lid(mail:dict):
     #a = bit.callMethod('crm.lead.fields')
+    email = None
+    phone = None
+    contact_id = None
     title = f"""Заказ в интернет-магазине {mail['номер заказа']}"""
-    print(title)
+    isGetContact = isGet_contact(mail['телефон'])
+    
+    if isGetContact[0]:
+        contact_id = isGetContact[1]
+    else:
+        phone = [{'VALUE':mail['телефон'], "VALUE_TYPE": "WORK" }] 
+        email= [{ "VALUE": mail['почта'], "VALUE_TYPE": "WORK" }]
+
     a = bit.callMethod('crm.lead.add',fields={'TITLE':title,
         'NAME':mail['фио'],
-        'EMAIL':[mail['почта']],
-        'COMMENTS':mail['инфо']})
+        'EMAIL':email,
+        'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
+        'PHONE':phone ,
+        'UF_CRM_1664182558362': 1036,
+        'CONTACT_ID':contact_id})
+
     #a = bit.callMethod('crm.lead.add', TITLE=title,
     #        NAME=mail['фио'],
     #        EMAIL=mail['почта'],
@@ -155,18 +183,26 @@ def test():
 
 @logger.catch
 def main():
-    sender = 'korzinymebeli@yandex.ru'
+    #sender = 'korzinymebeli@yandex.ru'
+    #sender = 'info@lefortovo-mebel.ru'
+    sender = 'noreply@megagroup.ru'
     #test()
-    imap.list()
-    imap.select("inbox")
+    #imap.list()
+    #imap.select("inbox")
+    imap.select("&BBsEHA-")
+   # for folder in imap.list()[1]:
+   #     print(shlex.split(folder.decode())[-1])
     types, data =imap.search(None, 'FROM', f'{sender}')
-    
-    for ID in data:
+    data = str(data[0]).replace("'",'').replace('b','').split(' ')
+    logger.debug(data)
+    for ID in data[-1]:
         mail = get_mail(ID)
         create_lid(mail)
 
 if __name__ == '__main__':
     art = text2art('mail', 'rand')
     print(art)
-    test()
-    #main()
+    #test()
+    main()
+    #a = isGet_contact('74441111111')
+    #logger.debug(a)
