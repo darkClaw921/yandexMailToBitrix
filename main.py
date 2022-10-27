@@ -24,7 +24,6 @@ bit = Bitrix24(webHook)
 imap = imaplib.IMAP4_SSL('imap.yandex.ru')
 imap.login(str(LOGIN),str(PASSWORD))
 
-
 logger.add('log.log', rotation='5 MB', level='DEBUG')
 
 #fileName='id.txt'
@@ -232,7 +231,11 @@ def del_list(lst,ID):
             a.remove(i)
     return a
 
+@logger.catch
 def test(folder:str):
+    global LAST_ID_Lefortovo, LAST_ID_Shkaf
+    logger.info(fileNames[folder][1])
+     
     imap.select(folder)
     #for folder in imap.list()[1]:
     #    print(shlex.split(folder.decode())[-1])
@@ -256,15 +259,18 @@ def test(folder:str):
         #f.write(data)
             f.write(ID)
             f.close()
-            LAST_ID_Lefortovo = int(ID)
+            fileNames[folder][1] = int(ID)
+            #LAST_ID_Lefortovo = int(ID)
+            logger.info(f'зписали ID: {ID} {fileNames[folder][0]}')
         
         elif folder == '&BCgEOgQwBEQ-2000':
             f = open(fileNames[folder][0], 'w')
         #f.write(data)
             f.write(ID)
             f.close()
-            LAST_ID_Shakaf = int(ID)
-        
+            fileNames[folder][1] = int(ID)
+            logger.info(f'зписали ID: {ID} {fileNames[folder][0]}')
+             
         create_lid(mail)
         logger.info(f'создали лида {fileNames[folder][0]}')
 
@@ -272,7 +278,6 @@ def test(folder:str):
 
 @logger.catch
 def main():
-    global LAST_ID
     #imap.select("&BBsEHA-")
     folders = ['&BBsEHA-','&BCgEOgQwBEQ-2000'] 
     for folder in folders:
