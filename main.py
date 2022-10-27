@@ -1,3 +1,6 @@
+from signal import signal, SIGPIPE, SIG_DFL 
+
+import shlex
 import time 
 import re
 import base64
@@ -12,6 +15,8 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+signal(SIGPIPE,SIG_DFL)
+
 LOGIN = os.environ.get('login')
 PASSWORD = os.environ.get('password')
 webHook = os.environ.get('webhook')
@@ -22,10 +27,22 @@ imap.login(str(LOGIN),str(PASSWORD))
 
 logger.add('log.log', rotation='5 MB', level='DEBUG')
 
-fileName='id.txt'
-f = open(fileName, 'r')
-LAST_ID = int(f.read())
+#fileName='id.txt'
+fileNameLefortovo='idLefortovo.txt'
+fileNameShkaf='idShkaf.txt'
+
+f = open(fileNameLefortovo, 'r')
+LAST_ID_Lefortovo = int(f.read())
 f.close()
+
+f = open(fileNameShkaf, 'r')
+LAST_ID_Shkaf = int(f.read())
+f.close()
+logger.info(LAST_ID_Shkaf)
+logger.info(LAST_ID_Lefortovo)
+
+fileNames = {'&BBsEHA-':['idLefortovo.txt',LAST_ID_Lefortovo],
+        '&BCgEOgQwBEQ-2000':['idShkaf.txt',LAST_ID_Shkaf]}
 
 @logger.catch
 def isGet_contact(phone:str):
@@ -165,7 +182,7 @@ def create_lid(mail:dict):
         'NAME':mail['фио'],
         'EMAIL':email,
         #'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
-        'UF_CRM_1666867162960':mail['инфо'] + mail['товары'] +'\n Итог:' + mail['Итог'] + "\n\n Сайт: "+ mail['Сайт'],
+        'UF_CRM_1666867162960':"\nДополнительная информация: "+mail['инфо'] +"\n"+ mail['товары'] +'\n Итог:' + mail['Итог'] + "\n\n Сайт: "+ mail['Сайт'],
         'PHONE':phone ,
         'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
@@ -206,45 +223,67 @@ def test():
     pprint(a)
 
 @logger.catch
-def del_list(lst):
+def del_list(lst,ID):
     a = lst.copy()
     for i in lst:
-        if int(i) > LAST_ID:
+        if int(i) > ID:
             continue
         else:
             a.remove(i)
     return a
 
-@logger.catch
-def main():
-    global LAST_ID
-    #sender = 'korzinymebeli@yandex.ru'
-    #sender = 'info@lefortovo-mebel.ru'
-    sender = 'noreply@megagroup.ru'
-    #test()
-    #imap.list()
-    #imap.select("inbox")
-    imap.select("&BBsEHA-")
-   # for folder in imap.list()[1]:
-   #     print(shlex.split(folder.decode())[-1])
-    types, data =imap.search(None, 'FROM', f'{sender}')
+def test(folder:str):
+    imap.select(folder)
+    #for folder in imap.list()[1]:
+    #    print(shlex.split(folder.decode())[-1])
+    sender = ['https://lefortovo-mebel.ru/','https://shkaf2000.ru/']
+    #types, data =imap.search(None, 'FROM', f'{sender}')
+    types, data =imap.search(None,"ALL")
+    logger.debug(data) 
     data = str(data[0]).replace("'",'').replace('b','').split(' ')
-    
-    data = del_list(data)
+    data = del_list(data,fileNames[folder][1])
     logger.debug(data)
     if data == []:
         return 0
 
     for ID in data:
         mail = get_mail(ID)
-        create_lid(mail)
-        logger.info('создали лида')
-
-        f = open(fileName, 'w')
+        if ID == '':
+            continue
+        
+        if folder == '&BBsEHA-':
+            f = open(fileNames[folder][0], 'w')
         #f.write(data)
-        f.write(ID)
-        f.close()
-        LAST_ID = int(ID)
+            f.write(ID)
+            f.close()
+            LAST_ID_Lefortovo = int(ID)
+        
+        elif folder == '&BCgEOgQwBEQ-2000':
+            f = open(fileNames[folder][0], 'w')
+        #f.write(data)
+            f.write(ID)
+            f.close()
+            LAST_ID_Shakaf = int(ID)
+        
+        create_lid(mail)
+        logger.info(f'создали лида {fileNames[folder][0]}')
+
+
+
+@logger.catch
+def main():
+    global LAST_ID
+    #imap.select("&BBsEHA-")
+    folders = ['&BBsEHA-','&BCgEOgQwBEQ-2000'] 
+    for folder in folders:
+        test(folder)
+
+    #:qsender = 'korzinymebeli@yandex.ru'
+    #sender = 'info@lefortovo-mebel.ru'
+    #sender = 'noreply@megagroup.ru'
+    #test()
+    #imap.list()
+    #imap.select("inbox")
 
 if __name__ == '__main__':
     art = text2art('mail', 'rand')
