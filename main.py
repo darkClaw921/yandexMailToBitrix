@@ -104,16 +104,17 @@ def prepare_product(string:str):
     s.pop(0)
     temps = ''
     for count, prod in enumerate(s):
+        # для переноса строки в коментарии <br>
         b=[]
         a = prod.split('\xa0')[0]  
         a = a.split(')',maxsplit=1)[1]
-        b.append(f'<br> {count+1} Товар: '+a.split('--')[0].strip())# название товара
-        b.append('<br> Цена: '+a.split('--')[1].split('x')[0].replace('р.', '') \
+        b.append(f'\n {count+1} Товар: '+a.split('--')[0].strip())# название товара
+        b.append('\n Цена: '+a.split('--')[1].split('x')[0].replace('р.', '') \
                 .replace(' ','').strip()) # цена одной штуки 
-        b.append('<br> Количество: '+a.split('--')[1].split('x')[1].split('=')[0].strip()) # количество товара
+        b.append('\n Количество: '+a.split('--')[1].split('x')[1].split('=')[0].strip().strip()) # количество товара
         temp.append(b)
         a1 = ' '.join(b)
-        temps += f'<br>\n{a1}\n'
+        temps += f'\n{a1}\n'
     return temps
     #logger.debug(s)
 
@@ -131,7 +132,7 @@ def prepare_text_email(string:str)->dict:
             .replace('-','') \
             .replace('+','')) 
     temp.setdefault( 'почта', slice_str(string,'Email: ','Дополнительная информация:')) 
-    temp.setdefault( 'инфо', slice_str(string,'Дополнительная информация: ','Номер заказа:')) 
+    temp.setdefault( 'инфо', slice_str(string,'Дополнительная информация: ','Номер заказа:').strip()) 
     temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа')) 
     #temp.setdefault( 'товары', slice_str(string,'Список товаров: ','Итог:')) 
     a = prepare_product( slice_str(string,'Список товаров:','Итого:'))
@@ -164,7 +165,7 @@ def create_lid(mail:dict):
         'NAME':mail['фио'],
         'EMAIL':email,
         #'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
-        'UF_CRM_1666867162960':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'] + "<br> <br> Сайт: "+ mail['Сайт'],
+        'UF_CRM_1666867162960':mail['инфо'] + mail['товары'] +'\n Итог:' + mail['Итог'] + "\n\n Сайт: "+ mail['Сайт'],
         'PHONE':phone ,
         'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
