@@ -151,8 +151,8 @@ def create_lid(mail:dict):
     isGetContact = isGet_contact(mail['телефон'])
     site = None
     
-    if mail['Сайт'] == 'lefortovo-mebel.ru':
-        site = 1036
+    #if mail['Сайт'] == 'lefortovo-mebel.ru':
+    #    site = 1036
     
     if isGetContact[0]:
         contact_id = isGetContact[1]
@@ -163,7 +163,8 @@ def create_lid(mail:dict):
     a = bit.callMethod('crm.lead.add',fields={'TITLE':title,
         'NAME':mail['фио'],
         'EMAIL':email,
-        'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
+        #'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
+        'UF_CRM_1666867162960':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'] + "<br> <br> Сайт: "+ mail['Сайт'],
         'PHONE':phone ,
         'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
@@ -180,11 +181,11 @@ def test():
     s = bit.callMethod('crm.lead.productrows.get', id=648) 
     a = bit.callMethod('crm.lead.productrows.set',
             id=648,
-            rows=[{
+            row =[{
                 "PRODUCT_ID": 76,
                 "QUANTITY":2,
                 }] )
-               # [{"ORIGINAL_PRODUCT_NAME": 'test1',
+               # [jолфыофыв{"ORIGINAL_PRODUCT_NAME": 'test1',
                 #"PRICE": 40,"QUANTITY": 2 }]])
             #{ "PRODUCT_ID": 666, "PRICE": '100.00', "QUANTITY": '2' }]])
     a = bit.callMethod('crm.product.add',
