@@ -68,6 +68,10 @@ def slice_str_phone(s:str,start:str):
 def slice_str_site(s:str,start:str):
     return s[s.find(start)+len(start):len(s)].split('/')[2]
 
+@logger.catch 
+def slice_str_site_full(s:str,start:str):
+    return s[s.find(start)+len(start):len(s)].strip().replace('&', '%26')
+
 @logger.catch
 def test2(mail):
     raw_email_string=mail
@@ -155,6 +159,7 @@ def prepare_text_email(string:str)->dict:
     temp.setdefault('товары',a)
     temp.setdefault('Итог', slice_str(string,'Оплаченная сумма:','Список товаров:').split('из')[1])#.replace('р.','')) 
     temp.setdefault('Сайт', slice_str_site(string,'Получить ссылку на купленный товар Вы можете на странице заказа:'))
+    temp.setdefault('Ссылка на товары', slice_str_site_full(string,'Получить ссылку на купленный товар Вы можете на странице заказа:'))
     #logger.debug(a)
     return temp
 
@@ -181,7 +186,12 @@ def create_lid(mail:dict):
         'NAME':mail['фио'],
         'EMAIL':email,
         #'COMMENTS':mail['инфо'] + mail['товары'] +'<br> Итог:' + mail['Итог'],
-        'UF_CRM_1666867162960':"\nДополнительная информация: "+mail['инфо'] +"\n"+ mail['товары'] +'\n Итог:' + mail['Итог'] + "\n\n Сайт: "+ mail['Сайт'],
+        'UF_CRM_1666867162960':"\nДополнительная информация: "+ \
+                mail['инфо'] + \
+                "\n"+ mail['товары'] + \
+                '\n Итог:' + mail['Итог'] + \
+                "\n Ссылка на товары: "+ mail['Ссылка на товары'] + \
+                "\n\n Сайт: "+ mail['Сайт'],
         'PHONE':phone ,
         'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
@@ -281,8 +291,10 @@ def main():
     #imap.select("&BBsEHA-")
     folders = ['&BBsEHA-','&BCgEOgQwBEQ-2000'] 
     for folder in folders:
+        #try:
         test(folder)
-
+        #except Exception as e:
+        #    logger.debug(f'Ошибка: {e}')
     #:qsender = 'korzinymebeli@yandex.ru'
     #sender = 'info@lefortovo-mebel.ru'
     #sender = 'noreply@megagroup.ru'
