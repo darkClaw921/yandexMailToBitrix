@@ -142,6 +142,7 @@ def prepare_product(string:str):
 @logger.catch
 def prepare_text_email(string:str)->dict:
     temp = {}
+    logger.debug(string)
     fio = slice_str(string, 'ФИО:','Телефон:')
     temp.setdefault( 'фио', slice_str(str(string),'ФИО: ','Телефон:')) 
     # TODO: можно записать лучше но я не помню как
@@ -151,16 +152,21 @@ def prepare_text_email(string:str)->dict:
             .replace(')','') \
             .replace('-','') \
             .replace('+','')) 
-    temp.setdefault( 'почта', slice_str(string,'Email: ','Дополнительная информация:')) 
+    #temp.setdefault( 'почта', slice_str(string,'Email: ','Дополнительная информация:')) 
+    temp.setdefault( 'почта', slice_str(string,'Email: ','\n\n\n').split(' ')[0]) 
+    #temp.setdefault( 'почта', slice_str(string,'Email: ','\n\n\n')) 
     temp.setdefault( 'инфо', slice_str(string,'Дополнительная информация: ','Номер заказа:').strip()) 
-    temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа')) 
+    temp.setdefault( 'номер заказа', slice_str(string,'Номер заказа: ','Статус заказа:')) 
     #temp.setdefault( 'товары', slice_str(string,'Список товаров: ','Итог:')) 
     a = prepare_product( slice_str(string,'Список товаров:','Итого:'))
     temp.setdefault('товары',a)
     temp.setdefault('Итог', slice_str(string,'Оплаченная сумма:','Список товаров:').split('из')[1])#.replace('р.','')) 
     temp.setdefault('Сайт', slice_str_site(string,'Получить ссылку на купленный товар Вы можете на странице заказа:'))
     temp.setdefault('Ссылка на товары', slice_str_site_full(string,'Получить ссылку на купленный товар Вы можете на странице заказа:'))
-    #logger.debug(a)
+    if temp['Сайт'] == 'shkaf2000.ru':
+        temp['почта'] = slice_str(string,'E-mail: ','\n\n\n').split(' ')[0] 
+
+    #logger.debug(a)§
     return temp
 
 @logger.catch
@@ -274,6 +280,7 @@ def test(folder:str):
             logger.info(f'зписали ID: {ID} {fileNames[folder][0]}')
         
         elif folder == '&BCgEOgQwBEQ-2000':
+            logger.debug(mail)
             f = open(fileNames[folder][0], 'w')
         #f.write(data)
             f.write(ID)
