@@ -26,27 +26,30 @@ imap.login(str(LOGIN),str(PASSWORD))
 
 logger.add('log.log', rotation='5 MB', level='DEBUG')
 
-#fileName='id.txt'
-fileNameLefortovo='idLefortovo.txt'
-fileNameShkaf='idShkaf.txt'
+fileName='idOrder.txt'
+#fileNameLefortovo='idLefortovo.txt'
+#fileNameShkaf='idShkaf.txt'
 
-f = open(fileNameLefortovo, 'r')
-LAST_ID_Lefortovo = int(f.read())
+#f = open(fileNameLefortovo, 'r')
+#LAST_ID_Lefortovo = int(f.read())
+#f.close()
+f = open(fileName, 'r')
+LAST_ID_Order = int(f.read())
 f.close()
 
-f = open(fileNameShkaf, 'r')
-LAST_ID_Shkaf = int(f.read())
-f.close()
-logger.info(LAST_ID_Shkaf)
-logger.info(LAST_ID_Lefortovo)
+#f = open(fileNameShkaf, 'r')
+#LAST_ID_Shkaf = int(f.read())
+#f.close()
+#logger.info(LAST_ID_Shkaf)
+#logger.info(LAST_ID_Lefortovo)
 
-fileNames = {'&BBsEHA-':['idLefortovo.txt',LAST_ID_Lefortovo],
-        '&BCgEOgQwBEQ-2000':['idShkaf.txt',LAST_ID_Shkaf]}
+#fileNames = {'&BBsEHA-':['idLefortovo.txt',LAST_ID_Lefortovo],
+#        '&BCgEOgQwBEQ-2000':['idShkaf.txt',LAST_ID_Shkaf]}
 
 @logger.catch
 def isGet_contact(phone:str):
     a= bit.callMethod("crm.contact.list", FILTER={'PHONE':phone}, select=['ID'])
-    logger.debug(a)
+    logger.debug(f'Поиск контакта {a}')
     if len(a) > 0:
         return True, a[0]['ID'] 
     else:
@@ -176,6 +179,7 @@ def create_lid(mail:dict):
     phone = None
     contact_id = None
     title = f"""Заказ в интернет-магазине {mail['номер заказа']}"""
+    logger.debug(mail['телефон'])
     isGetContact = isGet_contact(mail['телефон'])
     site = None
     
@@ -199,6 +203,7 @@ def create_lid(mail:dict):
                 "\n Ссылка на товары: "+ mail['Ссылка на товары'] + \
                 "\n\n Сайт: "+ mail['Сайт'],
         'PHONE':phone ,
+        'ASSIGNED_BY_ID':16,
         'UF_CRM_1664182558362': site,
         'CONTACT_ID':contact_id})
 
@@ -207,9 +212,10 @@ def create_lid(mail:dict):
     #        EMAIL=mail['почта'],
     #        COMMENTS=mail['инфо'])
     logger.info(a)
+    return a 
 
 @logger.catch
-def test():
+def tes1t():
     #a= bit.callMethod('crm.productrow.fields')
     s = bit.callMethod('crm.lead.productrows.get', id=648) 
     a = bit.callMethod('crm.lead.productrows.set',
@@ -249,18 +255,18 @@ def del_list(lst,ID):
 
 @logger.catch
 def test(folder:str):
-    global LAST_ID_Lefortovo, LAST_ID_Shkaf
-    logger.info(fileNames[folder][1])
+    global LAST_ID_Order, LAST_ID_Lefortovo, LAST_ID_Shkaf
+    #logger.info(fileNames[folder][1])
      
     imap.select(folder)
     #for folder in imap.list()[1]:
     #    print(shlex.split(folder.decode())[-1])
-    sender = ['https://lefortovo-mebel.ru/','https://shkaf2000.ru/']
+    #sender = ['https://lefortovo-mebel.ru/','https://shkaf2000.ru/']
     #types, data =imap.search(None, 'FROM', f'{sender}')
     types, data =imap.search(None,"ALL")
     logger.debug(data) 
     data = str(data[0]).replace("'",'').replace('b','').split(' ')
-    data = del_list(data,fileNames[folder][1])
+    data = del_list(data,LAST_ID_Order)
     logger.debug(data)
     if data == []:
         return 0
@@ -270,14 +276,16 @@ def test(folder:str):
         if ID == '':
             continue
         
-        if folder == '&BBsEHA-':
-            f = open(fileNames[folder][0], 'w')
+        #if folder == '&BBsEHA-':
+        if folder == 'order':
+            #f = open(fileNames[folder][0], 'w')
+            f = open(fileName, 'w')
         #f.write(data)
             f.write(ID)
             f.close()
-            fileNames[folder][1] = int(ID)
+            LAST_ID_Order = int(ID)
             #LAST_ID_Lefortovo = int(ID)
-            logger.info(f'зписали ID: {ID} {fileNames[folder][0]}')
+            logger.info(f'зписали ID: {ID} {LAST_ID_Order}')
         
         elif folder == '&BCgEOgQwBEQ-2000':
             logger.debug(mail)
@@ -288,15 +296,16 @@ def test(folder:str):
             fileNames[folder][1] = int(ID)
             logger.info(f'зписали ID: {ID} {fileNames[folder][0]}')
              
-        create_lid(mail)
-        logger.info(f'создали лида {fileNames[folder][0]}')
+        lid_id = create_lid(mail)
+        logger.info(f'создали лида {lid_id}')
 
 
 
 @logger.catch
 def main():
     #imap.select("&BBsEHA-")
-    folders = ['&BBsEHA-','&BCgEOgQwBEQ-2000'] 
+    #folders = ['&BBsEHA-','&BCgEOgQwBEQ-2000'] 
+    folders = ['order']
     for folder in folders:
         #try:
         test(folder)
